@@ -212,7 +212,6 @@ def recommendation(rec_type: str):
     if path is None or not path.exists():
         return {"text": "Unknown recommendation type."}
     raw = path.read_text(encoding="utf-8")
-    # Strip Streamlit-specific colour directives
     import re
     raw = re.sub(r":(\w+)\[([^\]]+)\]", r"**\2**", raw)
     return {"text": raw}

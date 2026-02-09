@@ -712,7 +712,7 @@ class OutlierTrainer:
         paths = [Path(p) for p in train_paths]
         by_day = {}
         for p in paths:
-            d = _infer_day_from_filename(p) or datetime.utcfromtimestamp(p.stat().st_mtime).date()
+            d = _infer_day_from_filename(p) or datetime.fromtimestamp(p.stat().st_mtime, tz=timezone.utc).date()
             by_day.setdefault(d, []).append(p)
 
         days_sorted = sorted(by_day.keys())
@@ -1180,7 +1180,7 @@ if __name__ == "__main__":
 
     # 1) Train (once in a while, triggered manually or by automation)
     # art = svc.retrain(
-    #     daily_path="daily_duckdbs/",
+    #     train_paths=["_data/arrow/2026-01-27.arrow", "_data/arrow/2026-01-28.arrow"],
     #     training=TrainingConfig(train_window_days=14, max_train_rows=400_000),
     #     onnx=OnnxExportConfig(opset=17, dtype="float32"),
     # )

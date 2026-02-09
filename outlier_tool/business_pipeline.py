@@ -534,7 +534,7 @@ def main() -> None:
     ap.add_argument("--pattern", type=str, default="*.parquet", help="Glob pattern, filenames should contain YYYY-MM-DD.")
 
     ap.add_argument("--out-dir", type=str, default="out_business", help="Output folder created in CWD.")
-    ap.add_argument("--stages", type=str, default="admission,postcompile,full")
+    ap.add_argument("--stages", type=str, default="postcompile")
 
     ap.add_argument("--target", type=str, default="execution_duration_ms")
 
