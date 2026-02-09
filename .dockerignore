@@ -1,0 +1,43 @@
+# Git
+.git
+.gitignore
+
+# Runtime data (generated at runtime inside container)
+data/db
+out_models
+state
+training_logs
+logs
+producer_state.json
+
+# Database files
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+dashboard/databases/
+dashboard/lakehouse_*
+
+# Test data (bind-mounted at runtime, not baked into image)
+kafka_stream/data/*.parquet
+
+# Python cache
+__pycache__
+*.pyc
+*.pyo
+venv
+.venv
+
+# IDE / editor
+.vscode
+.idea
+*.swp
+*.swo
+
+# Gemini / AI tooling
+.gemini
+.agent
+
+# Archives / misc
+__ARCHIVE__
+business_case_analysis
+*.parquet

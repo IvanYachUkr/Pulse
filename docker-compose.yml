@@ -1,0 +1,91 @@
+# =============================================================================
+# Pulse — Full Stack (Kafka + Pipeline + Dashboard)
+# =============================================================================
+# Usage:
+#   docker compose up              # Start everything
+#   docker compose up --build      # Rebuild and start
+#   docker compose down            # Stop everything
+#
+# Prerequisites:
+#   Place your test parquet file at: ./_data/input/sorted_4days.parquet
+#
+# Access:
+#   Dashboard:     http://localhost:8507
+#   Kafka Console: http://localhost:8080
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Kafka Broker (Redpanda)
+  # ---------------------------------------------------------------------------
+  redpanda:
+    image: redpandadata/redpanda:latest
+    container_name: redpanda
+    command:
+      - redpanda
+      - start
+      - --overprovisioned
+      - --smp
+      - "1"
+      - --memory
+      - "1G"
+      - --reserve-memory
+      - "0M"
+      - --node-id
+      - "0"
+      - --check=false
+      - --kafka-addr
+      - PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
+      - --advertise-kafka-addr
+      - PLAINTEXT://redpanda:29092,OUTSIDE://localhost:9092
+      - --pandaproxy-addr
+      - 0.0.0.0:8082
+      - --advertise-pandaproxy-addr
+      - localhost:8082
+    ports:
+      - "9092:9092"
+      - "8082:8082"
+      - "9644:9644"
+    healthcheck:
+      test: [ "CMD", "rpk", "cluster", "health" ]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+
+  # ---------------------------------------------------------------------------
+  # Kafka Console UI
+  # ---------------------------------------------------------------------------
+  console:
+    image: redpandadata/console:latest
+    container_name: redpanda-console
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    environment:
+      KAFKA_BROKERS: redpanda:29092
+    ports:
+      - "8080:8080"
+
+  # ---------------------------------------------------------------------------
+  # Pulse Pipeline (Producer + Consumers + Dashboard)
+  # ---------------------------------------------------------------------------
+  pipeline:
+    image: ghcr.io/ivanyachukr/pulse-pipeline:latest
+    build: .
+    container_name: pulse-pipeline
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    environment:
+      # Connect to Redpanda via Docker network (not localhost)
+      KAFKA_BOOTSTRAP_SERVERS: redpanda:29092
+      # Pipeline tuning (override as needed)
+      SPEEDUP: "600"
+      BATCH_SIZE: "65536"
+      IDLE_TIMEOUT: "10"
+      QUIET_FLAG: "--quiet"
+    ports:
+      - "8507:8507"
+    volumes:
+      # Mount test data file from host
+      - ./_data/input:/app/_data/input

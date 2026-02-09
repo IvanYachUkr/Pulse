@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+
+# Runtime data (all under _data/)
+_data/
+*.parquet
+*.arrow
+
+# Database files
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.db
+*.duckdb
+
+# Legacy / archive
+__ARCHIVE__/
+sample_kafka/
+dashboard_preact/
+business_case_analysis/
+
+# Local-only assets (not published)
+assets/pulse_g.gif
+
+# Copy files
+*copy*
+
+# Extra media files
+*.mp4
