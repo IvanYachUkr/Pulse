@@ -71,6 +71,10 @@ class TrainingManager:
         self.active_log: Optional[str] = None
         self.active_t0: Optional[float] = None
 
+        # context for retry jobs (set by enqueue)
+        self._last_db_dir: str = ""
+        self._last_table: str = ""
+
         # bounded queue; if it fills up we drop the oldest jobs
         self.queue = deque(maxlen=max_queue)
         self.completed_days: list[str] = []
@@ -195,6 +199,10 @@ class TrainingManager:
         if not self.should_train(day, retrain_every_n_days):
             print(f"[training] skipping day {day} (every {retrain_every_n_days} day(s))")
             return
+
+        # remember context so retry jobs (dequeued by poll) can recompute paths
+        self._last_db_dir = db_dir
+        self._last_table = table
 
         # dynamic multi-consumer detection: find which consumers actually wrote data
         active_consumers = self.detect_active_consumers(db_dir, table, day)
@@ -337,7 +345,7 @@ class TrainingManager:
         # kick off the next queued job, if any
         if self.queue:
             next_job = self.queue.popleft()
-            self._start(next_job)
+            self._start(next_job, db_dir=self._last_db_dir, table=self._last_table)
 
     def shutdown(self, wait: bool = True, timeout_s: float = 120.0) -> None:
         """Wait for training subprocess to complete on shutdown."""

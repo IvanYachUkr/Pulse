@@ -10,7 +10,7 @@ import logging
 import os
 import threading
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 from quixstreams import Application
@@ -361,7 +361,7 @@ def main() -> None:
         """Add window_start timestamp to each anomaly record (copying dicts)."""
         start_ms = result["start"]
         records: List[Dict[str, Any]] = result["value"] or []
-        window_start = datetime.fromtimestamp(start_ms / 1000).isoformat()
+        window_start = datetime.fromtimestamp(start_ms / 1000, tz=timezone.utc).isoformat()
 
         out: List[Dict[str, Any]] = []
         for rec in records:

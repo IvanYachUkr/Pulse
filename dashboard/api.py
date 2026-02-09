@@ -69,7 +69,7 @@ def status():
     result = {
         "stream_analytics": "no connection",
         "anomaly_detection": "no connection",
-        "cloud_database": "running",      # if we reach this code, the API is up
+        "cloud_database": "running",      # local DB status (key matches frontend)
     }
     try:
         with _data_lock:

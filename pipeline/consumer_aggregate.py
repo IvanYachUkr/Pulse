@@ -13,7 +13,7 @@ import logging
 import os
 import threading
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from quixstreams import Application
@@ -589,7 +589,7 @@ def _finalize_window_result(result: Dict[str, Any]) -> Dict[str, Any]:
     start_ms = result["start"]
     val = result["value"]
 
-    window_start = datetime.fromtimestamp(start_ms / 1000).isoformat()
+    window_start = datetime.fromtimestamp(start_ms / 1000, tz=timezone.utc).isoformat()
     return {
         "window_start": window_start,
         "instance_id": val["instance_id"],
