@@ -50,7 +50,7 @@ pip install -r requirements.txt
 
 ## Getting a Data File
 
-See the [Data File](DOCKER.md#getting-a-data-file) section in the Docker guide — the same instructions apply. Place your sorted Parquet file at `kafka_stream/data/sorted_4days.parquet`.
+See the [Data File](DOCKER.md#getting-a-data-file) section in the Docker guide — the same instructions apply. Place your sorted Parquet file at `_data/input/sorted_4days.parquet`.
 
 ---
 
@@ -188,14 +188,14 @@ For fine-grained control, start each component separately.
 
 ```bash
 python pipeline/producer.py \
-    --data-file kafka_stream/data/sorted_4days.parquet \
+    --data-file _data/input/sorted_4days.parquet \
     --speedup 600 \
     --reset
 ```
 
 | Argument | Default | Description |
 |----------|---------|-------------|
-| `--data-file` | *(required)* | Parquet file with query events |
+| `--data-file` | `_data/input/sorted_4days.parquet` | Parquet file with query events |
 | `--speedup` | `1` | Time acceleration factor (600 = 1 hour in 6 seconds) |
 | `--reset` | `false` | Start from beginning of data file |
 | `--quiet` | `false` | Suppress frequent output |
@@ -265,11 +265,9 @@ cd kafka_stream && docker-compose -f docker-compose-local.yml down
 cd ..
 
 # Remove all generated data
-rm -rf data/db out_models training_logs producer_state.json
-rm -rf dashboard/databases/stream_stats.sqlite*
-rm -rf dashboard/databases/archive
-rm -rf dashboard/lakehouse_stats dashboard/lakehouse_ml
-rm -rf state
+rm -rf _data/arrow _data/models _data/logs _data/checkpoints _data/store_ml
+rm -rf _data/stream_stats.sqlite* _data/archive
+rm -rf producer_state.json
 ```
 
 **Windows (PowerShell):**
@@ -280,11 +278,9 @@ cd kafka_stream; docker-compose -f docker-compose-local.yml down
 cd ..
 
 # Remove all generated data
-Remove-Item -Recurse -Force data/db, out_models, training_logs, producer_state.json -ErrorAction SilentlyContinue
-Remove-Item -Recurse -Force dashboard/databases/stream_stats.sqlite* -ErrorAction SilentlyContinue
-Remove-Item -Recurse -Force dashboard/databases/archive -ErrorAction SilentlyContinue
-Remove-Item -Recurse -Force dashboard/lakehouse_stats, dashboard/lakehouse_ml -ErrorAction SilentlyContinue
-Remove-Item -Recurse -Force state -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force _data/arrow, _data/models, _data/logs, _data/checkpoints, _data/store_ml -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force _data/stream_stats.sqlite*, _data/archive -ErrorAction SilentlyContinue
+Remove-Item -Force producer_state.json -ErrorAction SilentlyContinue
 ```
 
 ---

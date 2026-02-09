@@ -54,7 +54,7 @@ cd Pulse
 Place a **date-sorted** Parquet file from the [Amazon Redset](https://github.com/amazon-science/redset) dataset at:
 
 ```
-kafka_stream/data/sorted_4days.parquet
+_data/input/sorted_4days.parquet
 ```
 
 ### 2. Start
@@ -223,6 +223,7 @@ The dashboard is a **decoupled SPA** built with a **FastAPI JSON backend** and a
 ```
 Pulse/
 ├── README.md                       # This file
+├── LICENSE                         # MIT License
 ├── docker-compose.yml              # Full stack Docker setup
 ├── Dockerfile                      # Pipeline container image
 ├── docker-entrypoint.sh            # Container startup script
@@ -230,10 +231,19 @@ Pulse/
 ├── run_pipeline.bat / .sh          # Manual pipeline launchers
 ├── stop_pipeline.bat / .sh         # Manual pipeline stoppers
 │
+├── _data/                          # All runtime data (gitignored)
+│   ├── input/                      # Source parquet files
+│   ├── arrow/                      # Daily Arrow shard files
+│   ├── models/                     # Trained ONNX + joblib models
+│   ├── logs/                       # Training subprocess logs
+│   ├── checkpoints/                # QuixStreams RocksDB state
+│   └── store_ml/                   # ML anomalies lakehouse
+│
 ├── docs/                           # Documentation
 │   ├── DOCKER.md                   # Docker usage guide
 │   ├── MANUAL_SETUP.md             # Manual (non-Docker) setup
-│   └── QUERY_CLASSIFICATION.md     # Classification methodology
+│   ├── QUERY_CLASSIFICATION.md     # Classification methodology
+│   └── QUERY_CLASSIFICATION_ANALYSIS.md  # Threshold derivation data
 │
 ├── pipeline/                       # Core pipeline modules
 │   ├── config.py                   # Shared configuration
@@ -247,8 +257,7 @@ Pulse/
 │   ├── docker-compose-local.yml    # Redpanda config (local)
 │   ├── docker-compose-extern.yml   # Redpanda config (external network)
 │   ├── arrow_writer.py             # Feather+LZ4/ZSTD writer
-│   ├── anomalous_query_producer.py # Anomaly output producer
-│   └── data/                       # Input data files (parquet)
+│   └── anomalous_query_producer.py # Anomaly output producer
 │
 ├── outlier_tool/                   # ML library
 │   ├── redset_outlier_lib.py       # Core ML service (OutlierService)
@@ -256,8 +265,7 @@ Pulse/
 │   ├── business_models.py          # Model artifacts & training
 │   ├── business_io.py              # Data loading & saving
 │   ├── business_pipeline.py        # ML pipeline stages
-│   ├── business_anomaly_logic.py   # Anomaly detection thresholds
-│   └── ML_README.md                # ML library documentation
+│   └── business_anomaly_logic.py   # Anomaly detection thresholds
 │
 ├── dashboard/                      # FastAPI + Preact dashboard
 │   ├── api.py                      # FastAPI backend (JSON API)
@@ -266,16 +274,9 @@ Pulse/
 │   ├── style.css                   # Dashboard styles
 │   ├── backend_connection.py       # Database connections
 │   ├── db_reader.py                # Data queries
-│   ├── status_monitor.py           # System status
-│   ├── databases/                  # SQLite + DuckDB files
-│   ├── lakehouse_ml/               # ML anomalies lakehouse
-│   └── recommendations/            # Auto-generated recommendations
+│   └── recommendations/            # Remediation advice (markdown)
 │
-├── assets/                         # Images and logos
-├── business_case_analysis/         # Business analysis scripts
-├── data/db/                        # Output: daily Arrow shard files
-├── out_models/                     # Output: trained ONNX models
-└── training_logs/                  # Output: training subprocess logs
+└── assets/                         # Images and logos
 ```
 
 ---
@@ -283,7 +284,7 @@ Pulse/
 ## 🚨 Troubleshooting
 
 ### Training Fails
-* Check `training_logs/train_*.log` for errors
+* Check `_data/logs/train_*.log` for errors
 * Verify arrow files are readable: `import pyarrow.feather as feather; feather.read_feather("path")`
 * Ensure training has enough data (at least N days configured)
 
@@ -302,31 +303,7 @@ Pulse/
 
 ## 📝 License
 
-This project is licensed under the MIT License - see below:
-
-```
-MIT License
-
-Copyright (c) 2026 Pulse
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
+MIT License — see [LICENSE](LICENSE).
 
 ---
 
@@ -334,8 +311,8 @@ SOFTWARE.
 
 Built with:
 
-* [quixstreams](https://github.com/quixio/quix-streams) - Kafka streaming
-* [PyArrow](https://arrow.apache.org/docs/python/) - Feather format
-* [ONNX Runtime](https://onnxruntime.ai/) - ML inference
-* [orjson](https://github.com/ijl/orjson) - Fast JSON parsing
-* [Redpanda](https://redpanda.com/) - Kafka-compatible streaming
+* [QuixStreams](https://github.com/quixio/quix-streams) — Kafka streaming
+* [PyArrow](https://arrow.apache.org/docs/python/) — Feather format
+* [ONNX Runtime](https://onnxruntime.ai/) — ML inference
+* [orjson](https://github.com/ijl/orjson) — Fast JSON parsing
+* [Redpanda](https://redpanda.com/) — Kafka-compatible streaming

@@ -21,7 +21,7 @@ The pipeline replays a Parquet file of Redshift query events through Kafka. You 
 3. **Place** the file at:
 
    ```
-   kafka_stream/data/sorted_4days.parquet
+   _data/input/sorted_4days.parquet
    ```
 
    Or use any filename and override with the `DATA_FILE` environment variable (see [Configuration](#configuration) below).
@@ -86,13 +86,13 @@ $env:CLEAN="true"; docker compose up
 ```
 
 This removes:
-- Arrow shards (`data/db/`)
-- Trained ONNX models (`out_models/`)
-- Training logs (`training_logs/`)
-- SQLite databases (`dashboard/databases/`)
-- Lakehouse data (`dashboard/lakehouse_stats/`, `dashboard/lakehouse_ml/`)
+- Arrow shards (`_data/arrow/`)
+- Trained ONNX models (`_data/models/`)
+- Training logs (`_data/logs/`)
+- SQLite databases (`_data/stream_stats.sqlite*`)
+- Lakehouse data (`_data/store_ml/`)
 - Producer state (`producer_state.json`)
-- QuixStreams state (`state/`)
+- QuixStreams state (`_data/checkpoints/`)
 
 ### When to Use Clean
 
@@ -194,7 +194,7 @@ All pipeline behavior is configurable through environment variables in `docker-c
 | `BATCH_SIZE` | `65536` | Inference batch size for the ML consumer |
 | `IDLE_TIMEOUT` | `10` | Seconds of idle before the engine consumer exits |
 | `QUIET_FLAG` | `--quiet` | Set to empty string `""` for verbose output |
-| `DATA_FILE` | `kafka_stream/data/sorted_4days.parquet` | Path to the input Parquet file (inside the container) |
+| `DATA_FILE` | `_data/input/sorted_4days.parquet` | Path to the input Parquet file (inside the container) |
 | `KAFKA_BOOTSTRAP_SERVERS` | `redpanda:29092` | Kafka broker address (don't change unless you know what you're doing) |
 | `CLEAN` | *(unset)* | Set to `true` to wipe all data before starting |
 
@@ -208,22 +208,22 @@ SPEEDUP=100 QUIET_FLAG="" CLEAN=true docker compose up
 
 ## Mounting Custom Data
 
-The `docker-compose.yml` mounts `./kafka_stream/data` into the container:
+The `docker-compose.yml` mounts `./_data/input` into the container:
 
 ```yaml
 volumes:
-  - ./kafka_stream/data:/app/kafka_stream/data
+  - ./_data/input:/app/_data/input
 ```
 
 To use a data file in a different location:
 
 ```bash
 # Option 1: Copy your file into the expected directory
-cp /path/to/my_data.parquet kafka_stream/data/sorted_4days.parquet
+cp /path/to/my_data.parquet _data/input/sorted_4days.parquet
 
 # Option 2: Override the volume mount and DATA_FILE env var
-docker run -v /path/to/data:/app/kafka_stream/data \
-  -e DATA_FILE=kafka_stream/data/my_data.parquet \
+docker run -v /path/to/data:/app/_data/input \
+  -e DATA_FILE=_data/input/my_data.parquet \
   ghcr.io/ivanyachukr/pulse-pipeline:latest
 ```
 
@@ -244,7 +244,7 @@ docker run -v /path/to/data:/app/kafka_stream/data \
 The pipeline needs time to process data. Wait 30–60 seconds after startup, then click **All** in the sidebar.
 
 ### No instances appear
-- Check that your data file exists: `ls kafka_stream/data/`
+- Check that your data file exists: `ls _data/input/`
 - Check pipeline logs: `docker logs pulse-pipeline`
 - Ensure the Parquet file is sorted by timestamp
 
