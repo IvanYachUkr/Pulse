@@ -251,6 +251,7 @@ def process_day_for_stage(
 
 
 def run_simulation(args: argparse.Namespace) -> None:
+    """Execute backtest mode over a bounded parquet date range."""
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -396,6 +397,7 @@ def run_simulation(args: argparse.Namespace) -> None:
 
 
 def run_follow(args: argparse.Namespace) -> None:
+    """Execute follow mode that processes day-partitioned parquet files."""
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -517,6 +519,7 @@ def run_follow(args: argparse.Namespace) -> None:
 
 
 def main() -> None:
+    """Parse CLI arguments and run the requested pipeline mode."""
     ap = argparse.ArgumentParser(description="Daily training + anomaly extraction pipeline (simulation or folder-follow).")
 
     ap.add_argument("--mode", choices=["simulate", "follow"], required=True)

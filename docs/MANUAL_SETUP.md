@@ -196,9 +196,8 @@ python pipeline/producer.py \
 | Argument | Default | Description |
 |----------|---------|-------------|
 | `--data-file` | `_data/input/sorted_4days.parquet` | Parquet file with query events |
-| `--speedup` | `1` | Time acceleration factor (600 = 1 hour in 6 seconds) |
+| `--speedup` | `60` | Time acceleration factor (600 = 1 hour in 6 seconds) |
 | `--reset` | `false` | Start from beginning of data file |
-| `--quiet` | `false` | Suppress frequent output |
 
 ### Engine Consumer (ML Inference + Training)
 

@@ -141,6 +141,7 @@ _TLS = threading.local()
 
 
 def _get_tls_cache() -> Dict[str, duckdb.DuckDBPyConnection]:
+    """Return per-thread cache for DuckDB lakehouse connections."""
     cache = getattr(_TLS, "duckdb_conns", None)
     if cache is None:
         cache = {}

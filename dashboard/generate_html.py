@@ -90,7 +90,7 @@ function Sidebar({ status, instances, criticalIds, selectedIds, onSelect, timeWi
         <h3>Status</h3>
         <div class="status-row">
           <${StatusDot} label="Stream Analytics" status=${status.stream_analytics} />
-          <${StatusDot} label="Anomaly Detection" status=${status.anomalie_detection} />
+          <${StatusDot} label="Anomaly Detection" status=${status.anomaly_detection} />
           <${StatusDot} label="Database" status=${status.cloud_database} />
         </div>
       </div>
@@ -415,7 +415,7 @@ function RightDrawer({ open, onToggle, tableData, criticalTypes }) {
 
 // ── App ─────────────────────────────────────────────────
 function App() {
-  const [status, setStatus] = useState({ stream_analytics:'no connection', anomalie_detection:'no connection', cloud_database:'no connection' });
+  const [status, setStatus] = useState({ stream_analytics:'no connection', anomaly_detection:'no connection', cloud_database:'no connection' });
   const [instances, setInstances] = useState([]);
   const [criticalIds, setCriticalIds] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
@@ -481,7 +481,7 @@ function App() {
         if (!st) { fails++; } else { fails = 0; }
         if (fails >= 3) {
           clearInterval(interval);
-          setStatus({ stream_analytics:'no connection', anomalie_detection:'no connection', cloud_database:'no connection' });
+          setStatus({ stream_analytics:'no connection', anomaly_detection:'no connection', cloud_database:'no connection' });
           return;
         }
         if (st) setStatus(st); if (m) setMetrics(m); if (ch) setChartData(ch);

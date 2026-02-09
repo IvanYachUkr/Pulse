@@ -174,6 +174,7 @@ def _safe_json_dump(path: Path, obj: Dict[str, Any]) -> None:
 
 
 def _safe_json_load(path: Path) -> Optional[Dict[str, Any]]:
+    """Load JSON from disk, returning ``None`` when unavailable."""
     if not path.exists():
         return None
     try:
@@ -239,6 +240,7 @@ def _required_raw_cols_for_postcompile(target: str) -> List[str]:
 
 
 def _coerce_feature_dtypes_for_onnx(df: pd.DataFrame, cat_cols: List[str], num_cols: List[str], dtype: str) -> pd.DataFrame:
+    """Cast feature columns to ONNX-compatible string and float dtypes."""
     out = df.copy()
 
     for c in cat_cols:
@@ -258,6 +260,7 @@ def _coerce_feature_dtypes_for_onnx(df: pd.DataFrame, cat_cols: List[str], num_c
 
 
 def _ensure_2d_col(a: np.ndarray) -> np.ndarray:
+    """Ensure a vector uses two dimensions for model input tensors."""
     a = np.asarray(a)
     if a.ndim == 1:
         return a.reshape((-1, 1))
@@ -265,6 +268,7 @@ def _ensure_2d_col(a: np.ndarray) -> np.ndarray:
 
 
 def _predict_ms_from_regressor_output(pred_log: np.ndarray, min_pred_ms: float) -> np.ndarray:
+    """Convert clipped log predictions into millisecond values."""
     pred_log = np.asarray(pred_log, dtype=np.float64).reshape((-1,))
     pred_ms = np.expm1(np.clip(pred_log, -50.0, 50.0))
     pred_ms = np.maximum(pred_ms, float(min_pred_ms))
@@ -283,6 +287,7 @@ def _export_pipeline_to_onnx(
     opset: int,
     fixed_batch_size: Optional[int] = None,
 ) -> bytes:
+    """Export a fitted sklearn pipeline to serialized ONNX bytes."""
     from skl2onnx import to_onnx
     from skl2onnx.common.data_types import FloatTensorType, StringTensorType
 
@@ -299,12 +304,14 @@ def _export_pipeline_to_onnx(
 
 
 def _make_ort_session(onnx_bytes: bytes, providers: Sequence[str]) -> Any:
+    """Create an ONNX Runtime session with the configured providers."""
     import onnxruntime as ort
     so = ort.SessionOptions()
     return ort.InferenceSession(onnx_bytes, sess_options=so, providers=list(providers))
 
 
 def _ort_inputs_from_df(sess: Any, df: pd.DataFrame, dtype: str) -> Dict[str, np.ndarray]:
+    """Build a feed dictionary from prepared feature data."""
     feeds: Dict[str, np.ndarray] = {}
 
     for inp in sess.get_inputs():
@@ -334,6 +341,7 @@ def _ort_inputs_from_df(sess: Any, df: pd.DataFrame, dtype: str) -> Dict[str, np
 
 @dataclass(frozen=True)
 class ModelArtifact:
+    """Persisted model artifact metadata and file pointers."""
     tag: str
     stage: str
     trained_on: str
@@ -489,6 +497,8 @@ class ModelStore:
 # ---------------------------------------------------------------------
 
 class OutlierTrainer:
+    """Train, validate, and export outlier-detection artifacts."""
+
     def __init__(self, model_dir: Union[str, Path]) -> None:
         self.store = ModelStore(model_dir)
 
@@ -832,6 +842,8 @@ class OutlierTrainer:
 # ---------------------------------------------------------------------
 
 class OutlierEngine:
+    """Execute ONNX inference and anomaly classification for query batches."""
+
     def __init__(
         self,
         artifact: ModelArtifact,

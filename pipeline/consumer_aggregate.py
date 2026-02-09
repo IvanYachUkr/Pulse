@@ -611,6 +611,7 @@ def _finalize_window_result(result: Dict[str, Any]) -> Dict[str, Any]:
 # ---------------------------------------------------------------------
 
 def main() -> None:
+    """Run the aggregate-consumer CLI entrypoint."""
     parser = argparse.ArgumentParser(
         description="Kafka consumer with tumbling window aggregation and query classification"
     )

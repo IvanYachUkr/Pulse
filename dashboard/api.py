@@ -68,7 +68,7 @@ def status():
     """Probe actual database connectivity instead of returning hardcoded values."""
     result = {
         "stream_analytics": "no connection",
-        "anomalie_detection": "no connection",
+        "anomaly_detection": "no connection",
         "cloud_database": "running",      # if we reach this code, the API is up
     }
     try:
@@ -83,9 +83,9 @@ def status():
             # Probe ML DB
             try:
                 b.db_ml.query(f"SELECT 1 FROM {b.db_ml.tablename} LIMIT 1")
-                result["anomalie_detection"] = "running"
+                result["anomaly_detection"] = "running"
             except Exception:
-                result["anomalie_detection"] = "error"
+                result["anomaly_detection"] = "error"
     except Exception:
         traceback.print_exc()
     return result
@@ -93,6 +93,7 @@ def status():
 
 @app.get("/api/instances")
 def instances(window: str = "24h"):
+    """Return all known instance IDs for the active time window."""
     try:
         with _data_lock:
             b = get_backend(window)
@@ -104,6 +105,7 @@ def instances(window: str = "24h"):
 
 @app.get("/api/instances/critical")
 def critical_instances(window: str = "24h"):
+    """Return instance IDs that exceed critical-problem thresholds."""
     try:
         with _data_lock:
             b = get_backend(window)
@@ -115,6 +117,7 @@ def critical_instances(window: str = "24h"):
 
 @app.get("/api/metrics")
 def metrics(ids: str = Query(...), window: str = "24h"):
+    """Return aggregate metrics for one or more instance IDs."""
     try:
         with _data_lock:
             b = get_backend(window)
@@ -127,6 +130,7 @@ def metrics(ids: str = Query(...), window: str = "24h"):
 
 @app.get("/api/classification/chart")
 def classification_chart(ids: str = Query(...), window: str = "24h"):
+    """Return time-series query classification percentages."""
     try:
         with _data_lock:
             b = get_backend(window)
@@ -148,6 +152,7 @@ def classification_chart(ids: str = Query(...), window: str = "24h"):
 
 @app.get("/api/classification/table")
 def classification_table(ids: str = Query(...), window: str = "24h"):
+    """Return a single-row classification summary table."""
     try:
         with _data_lock:
             b = get_backend(window)
@@ -163,6 +168,7 @@ def classification_table(ids: str = Query(...), window: str = "24h"):
 
 @app.get("/api/anomalies")
 def anomalies(ids: str = Query(...), window: str = "24h"):
+    """Return anomaly records for the selected instances."""
     try:
         with _data_lock:
             b = get_backend(window)
@@ -180,6 +186,7 @@ def anomalies(ids: str = Query(...), window: str = "24h"):
 
 @app.get("/api/critical/types")
 def critical_types(ids: str = Query(...), window: str = "24h"):
+    """Return active critical problem categories in severity order."""
     try:
         with _data_lock:
             b = get_backend(window)
@@ -200,6 +207,7 @@ RECOMMENDATIONS = {
 
 @app.get("/api/recommendations/{rec_type}")
 def recommendation(rec_type: str):
+    """Return markdown guidance for a recommendation category."""
     path = RECOMMENDATIONS.get(rec_type)
     if path is None or not path.exists():
         return {"text": "Unknown recommendation type."}
@@ -218,23 +226,27 @@ NO_CACHE = {"Cache-Control": "no-cache, must-revalidate"}
 
 @app.get("/")
 def index():
+    """Serve the dashboard single-page app."""
     return FileResponse(STATIC_DIR / "index.html", headers=NO_CACHE)
 
 
 @app.get("/style.css")
 def stylesheet():
+    """Serve dashboard stylesheet with no-cache headers."""
     return FileResponse(STATIC_DIR / "style.css", media_type="text/css", headers=NO_CACHE)
 
 
 @app.get("/logo.png")
 def logo():
-    return FileResponse(PROJECT_ROOT / "assets" / "red_pulse.png", media_type="image/png", headers=NO_CACHE)
+    """Serve the dashboard logo asset."""
+    return FileResponse(PROJECT_ROOT / "assets" / "pulse.png", media_type="image/png", headers=NO_CACHE)
 
 
 @app.get("/favicon.ico")
 def favicon():
+    """Serve favicon image for browsers."""
     return FileResponse(
-        PROJECT_ROOT / "assets" / "red_pulse.png", media_type="image/png"
+        PROJECT_ROOT / "assets" / "pulse.png", media_type="image/png"
     )
 
 

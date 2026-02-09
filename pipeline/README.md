@@ -43,9 +43,8 @@ python pipeline/producer.py \
 | Argument | Default | Description |
 |----------|---------|-------------|
 | `--data-file` | `_data/input/sorted_4days.parquet` | Input Parquet file |
-| `--speedup` | `1` | Time acceleration (600 = 1hr → 6s) |
+| `--speedup` | `60` | Time acceleration (600 = 1hr → 6s) |
 | `--reset` | `false` | Start from beginning of data file |
-| `--quiet` | `false` | Suppress per-batch output |
 
 ### Engine Consumer (ML)
 

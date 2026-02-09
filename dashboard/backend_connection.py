@@ -19,6 +19,7 @@ PROBLEM_TYPES = ("cpu_bound", "io_bound", "queue_wlm_bound", "network_bound")
 
 
 class DashboardBackend:
+    """Serve dashboard-facing query helpers for stream and ML datasets."""
 
     def __init__(self):
         # Stream aggregation — auto-detects SQLite or Lakehouse

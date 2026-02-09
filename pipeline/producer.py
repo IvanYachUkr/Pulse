@@ -146,6 +146,11 @@ def _producer_flush(producer, timeout_s: float = 10.0) -> None:
 # ---------------------------------------------------------------------
 
 def main() -> int:
+    """Run the Kafka producer CLI.
+
+    Returns:
+        Process exit code where ``0`` indicates success.
+    """
     parser = argparse.ArgumentParser(description="Kafka Producer for Redshift Query Events")
     parser.add_argument("--topic", default="redshift.query_events")
     parser.add_argument("--bootstrap", default=KAFKA_BOOTSTRAP_SERVERS)

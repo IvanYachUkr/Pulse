@@ -27,11 +27,11 @@ docker-compose -f docker-compose-local.yml up -d
 
 ## Arrow Writer
 
-The `ArrowWriter` class provides high-performance batched writes:
+The `DailyArrowWriter` class provides high-performance batched writes:
 
 - **Format**: Apache Arrow Feather (IPC)
 - **Compression**: LZ4 (default, fastest) or ZSTD (2x smaller)
-- **Partitioning**: Automatic date-based file naming (`shard_YYYY-MM-DD_N.arrow`)
+- **Partitioning**: Shard naming with consumer-safe uniqueness (`{table}_YYYY-MM-DD_{kind}_c{consumer_id}_{timestamp}_{seq}.arrow`)
 - **Batching**: Configurable batch size with periodic flush
 
 ### Performance

@@ -232,11 +232,13 @@ def _duckdb_type_for_series(s: pd.Series) -> str:
 
 
 def _table_exists(con: duckdb.DuckDBPyConnection, table: str) -> bool:
+    """Return whether a DuckDB table exists by name."""
     q = "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = ?"
     return con.execute(q, [table]).fetchone()[0] > 0
 
 
 def _table_columns(con: duckdb.DuckDBPyConnection, table: str) -> List[str]:
+    """Return ordered column names for a DuckDB table."""
     # PRAGMA table_info returns: cid, name, type, notnull, dflt_value, pk
     info = con.execute(f"PRAGMA table_info('{table}')").fetchall()
     return [row[1] for row in info]
