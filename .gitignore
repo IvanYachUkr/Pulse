@@ -15,14 +15,17 @@ _data/
 *.db
 *.duckdb
 
+# Producer resume state
+producer_state.json
+
+# Runtime logs
+logs/
+
 # Legacy / archive
 __ARCHIVE__/
 sample_kafka/
 dashboard_preact/
 business_case_analysis/
-
-# Local-only assets (not published)
-assets/pulse_g.gif
 
 # Copy files
 *copy*

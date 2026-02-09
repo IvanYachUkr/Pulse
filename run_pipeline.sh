@@ -34,6 +34,8 @@ if [ "$1" == "--clean" ]; then
     rm -rf _data/models
     echo "Removing producer state..."
     rm -f producer_state.json
+    echo "Removing SQLite databases..."
+    rm -f _data/stream_stats.sqlite _data/stream_stats.sqlite-wal _data/stream_stats.sqlite-shm
     echo "Removing lakehouse data..."
     rm -rf _data/store_stats
     rm -rf _data/store_ml

@@ -28,6 +28,10 @@ if "%1"=="--clean" (
     if exist "_data\models" rmdir /s /q "_data\models"
     echo Removing producer state...
     if exist "producer_state.json" del /f /q "producer_state.json"
+    echo Removing SQLite databases...
+    if exist "_data\stream_stats.sqlite" del /f /q "_data\stream_stats.sqlite"
+    if exist "_data\stream_stats.sqlite-wal" del /f /q "_data\stream_stats.sqlite-wal"
+    if exist "_data\stream_stats.sqlite-shm" del /f /q "_data\stream_stats.sqlite-shm"
     echo Removing lakehouse data...
     if exist "_data\store_stats" rmdir /s /q "_data\store_stats"
     if exist "_data\store_ml" rmdir /s /q "_data\store_ml"

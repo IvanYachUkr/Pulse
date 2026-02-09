@@ -3,7 +3,7 @@ import os
 import pyarrow as pa
 import pyarrow.feather as feather
 from typing import Optional, List, Any
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class DailyArrowWriter:
@@ -117,7 +117,7 @@ class DailyArrowWriter:
         
         Matches TrainingManager's day prefix detection: "{table}_{day}_"
         """
-        ts = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+        ts = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
         seq = self._shard_seq
         self._shard_seq += 1
         fname = f"{self.table}_{day}_{shard_kind}_c{self.consumer_id}_{ts}_{seq:06d}.arrow"
@@ -267,7 +267,7 @@ class DailyArrowWriter:
         
         # Write timestamp to marker for debugging
         with open(marker_path, 'w', encoding='utf-8') as f:
-            f.write(datetime.utcnow().isoformat() + "\n")
+            f.write(datetime.now(timezone.utc).isoformat() + "\n")
         
         return marker_path
 

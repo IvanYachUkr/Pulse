@@ -7,6 +7,7 @@ DuckDB sqlite_scanner) behind a common abstract interface.  A factory function
 """
 
 import logging
+import re
 import sys
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -90,8 +91,10 @@ class SQLiteReader(BaseReader):
             else:
                 converted.append(p)
 
-        # Swap bare table name for the sqlite_scan(...) call
-        qualified_sql = sql.replace(self.tablename, self._table_ref())
+        # Swap bare table name for the sqlite_scan(...) call (word-boundary safe)
+        qualified_sql = re.sub(
+            rf"\b{re.escape(self.tablename)}\b", self._table_ref(), sql
+        )
         return self.conn.execute(qualified_sql, converted).df()
 
 

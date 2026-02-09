@@ -83,9 +83,10 @@ class DashboardBackend:
         sql = f"""
             SELECT DISTINCT instance_id
             FROM {self.db_stream.tablename}
+            WHERE window_start >= ?
         """
         try:
-            return self.db_stream.query(sql)["instance_id"].tolist()
+            return self.db_stream.query(sql, [self.window_start])["instance_id"].tolist()
         except Exception:
             logger.exception("Failed to fetch instance IDs")
             return []

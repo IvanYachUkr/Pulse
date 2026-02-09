@@ -13,7 +13,7 @@ import os
 import re
 import time
 from dataclasses import dataclass, asdict
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
@@ -480,7 +480,7 @@ class ModelStore:
         return ModelArtifact(
             tag=stem,
             stage=stage,
-            trained_on=str(b.get("day", "")) or datetime.utcnow().date().isoformat(),
+            trained_on=str(b.get("day", "")) or datetime.now(timezone.utc).date().isoformat(),
             bundle_path=str(bundle_path),
             onnx_mean_path=str(onnx_mean),
             onnx_q_path=str(onnx_q),
@@ -781,7 +781,7 @@ class OutlierTrainer:
             for dt_file, size, path_s, nrows in slow:
                 print(f"  {dt_file:.3f}s  {size/(1024*1024):6.1f}MB  rows={nrows:7}  {path_s}")
 
-        trained_on = days_sorted[-1] if days_sorted else datetime.utcnow().date()
+        trained_on = days_sorted[-1] if days_sorted else datetime.now(timezone.utc).date()
         return df, trained_on.isoformat()
 
     def _cap_rows(self, df: pd.DataFrame, max_rows: int) -> pd.DataFrame:

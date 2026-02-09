@@ -44,6 +44,7 @@ trap cleanup SIGTERM SIGINT
 if [ "$1" == "--clean" ] || [ "$CLEAN" == "true" ]; then
     echo "[entrypoint] Cleaning previous run data..."
     rm -rf _data/arrow _data/models _data/logs _data/checkpoints producer_state.json
+    rm -f _data/stream_stats.sqlite _data/stream_stats.sqlite-wal _data/stream_stats.sqlite-shm
     rm -rf _data/store_stats _data/store_ml
     mkdir -p _data/arrow _data/models _data/logs _data/checkpoints _data/input
     echo "[entrypoint] Clean complete."
