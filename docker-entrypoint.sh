@@ -124,10 +124,10 @@ if [ "$NO_PRODUCER" != "true" ]; then
 fi
 
 # 5. Dashboard API (foreground — keeps container alive)
-echo "[entrypoint] Starting Dashboard API on port 8507..."
+echo "[entrypoint] Starting Dashboard API on port ${DASHBOARD_PORT:-8507}..."
 echo ""
 echo "============================================"
-echo " Dashboard:  http://localhost:8507"
+echo " Dashboard:  http://localhost:${DASHBOARD_PORT:-8507}"
 echo "============================================"
 echo ""
 

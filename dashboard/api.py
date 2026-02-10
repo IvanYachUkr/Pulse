@@ -30,7 +30,8 @@ app = FastAPI(title="Pulse API")
 
 # CORS: configurable via CORS_ORIGINS env var (comma-separated).
 # Default: localhost only. Set CORS_ORIGINS=* for development/demo.
-_cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:8507")
+_port = int(os.getenv("DASHBOARD_PORT", "8507"))
+_cors_origins = os.getenv("CORS_ORIGINS", f"http://localhost:{_port}")
 _allowed_origins = [o.strip() for o in _cors_origins.split(",")]
 
 app.add_middleware(
@@ -264,4 +265,4 @@ def favicon():
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8507)
+    uvicorn.run(app, host="0.0.0.0", port=_port)
