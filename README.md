@@ -301,6 +301,23 @@ Pulse/
 
 ---
 
+## 🔬 Reproducibility
+
+> **Minimum requirement:** **8 GB of free RAM** to run the full pipeline (Redpanda + all consumers + producer + dashboard).
+
+All development, testing, and benchmarking were performed on:
+
+| Component | Specification |
+|-----------|---------------|
+| **Laptop** | ASUS ROG Zephyrus G16 (2024) — GA605WI |
+| **CPU** | AMD Ryzen AI 9 HX 370 — 12 cores / 24 threads, up to 5.1 GHz |
+| **RAM** | 32 GB LPDDR5X-7500 (soldered) |
+| **GPU** | NVIDIA GeForce RTX 4070 Laptop — 8 GB GDDR6 |
+| **Storage** | 1 TB PCIe 4.0 NVMe SSD |
+| **OS** | Windows 11 Home |
+
+---
+
 ## 📝 License
 
 MIT License — see [LICENSE](LICENSE).
