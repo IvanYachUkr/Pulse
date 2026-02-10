@@ -28,6 +28,6 @@ echo  All components stopped.
 echo ============================================
 echo.
 echo Note: Kafka (Redpanda) is still running.
-echo To stop Kafka: cd kafka_stream ^&^& docker-compose -f docker-compose-extern.yml down
+echo To stop Kafka: cd kafka_stream ^&^& docker-compose -f docker-compose-local.yml down
 echo.
 pause
