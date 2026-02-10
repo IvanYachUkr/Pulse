@@ -14,25 +14,29 @@ Evaluation order matters — first match wins.
 
 ```sql
 CASE
-    WHEN query_type IN ('copy', 'unload')
+    WHEN was_cached = 0
+         AND query_type IN ('copy', 'unload')
          AND execution_duration_ms > 500
     THEN 'Network-bound'
 
-    WHEN query_type NOT IN ('copy', 'unload')
+    WHEN was_cached = 0
+         AND query_type NOT IN ('copy', 'unload')
          AND (num_joins > 1 OR num_aggregations > 1)
          AND mbytes_scanned > 0
          AND (execution_duration_ms / (mbytes_scanned + 1)) > 20.0
          AND execution_duration_ms > 1000
     THEN 'CPU-bound'
 
-    WHEN query_type NOT IN ('copy', 'unload')
+    WHEN was_cached = 0
+         AND query_type NOT IN ('copy', 'unload')
          AND mbytes_scanned >= 2000
          AND (execution_duration_ms / (mbytes_scanned + 1)) < 0.061
          AND (mbytes_spilled > 0 OR num_scans > 1)
          AND execution_duration_ms > 1000
     THEN 'IO-bound'
 
-    WHEN queue_duration_ms >= execution_duration_ms
+    WHEN was_cached = 0
+         AND queue_duration_ms >= execution_duration_ms
          AND queue_duration_ms > 1000
          AND execution_duration_ms > 0
          AND (num_scans + num_joins + num_aggregations) < 4
@@ -42,7 +46,7 @@ CASE
 END
 ```
 
-COPY/UNLOAD is checked first to separate data-transfer operations before applying compute or IO tests. Cached queries are excluded from resource-bottleneck classes in the streaming implementation (`consumer_aggregate.py → classify_query()`).
+COPY/UNLOAD is checked first to separate data-transfer operations before applying compute or IO tests. Cached queries (`was_cached = 1`) are excluded from all bottleneck classes and fall through to Normal.
 
 ---
 

@@ -146,13 +146,13 @@ def classify_query(row: Dict[str, Any]) -> str:
     queue_ms = row.get("queue_duration_ms") or 0
     was_cached = row.get("was_cached") or False
 
+    # Skip cached queries — they don't reflect real resource bottlenecks
+    if was_cached:
+        return "normal_queries"
+
     # ① Network-bound: COPY/UNLOAD with meaningful data transfer (>50 MB median)
     if q_type in ("copy", "unload") and exec_ms > 500:
         return "network_bound_queries"
-
-    # Skip cached queries for resource-bottleneck classes
-    if was_cached:
-        return "normal_queries"
 
     # Avoid division by zero
     ratio = exec_ms / (scanned + 1) if scanned > 0 else 0
