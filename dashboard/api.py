@@ -22,13 +22,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+import os
+
 from backend_connection import DashboardBackend, compute_time_window
 
 app = FastAPI(title="Pulse API")
 
+# CORS: configurable via CORS_ORIGINS env var (comma-separated).
+# Default: localhost only. Set CORS_ORIGINS=* for development/demo.
+_cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:8507")
+_allowed_origins = [o.strip() for o in _cors_origins.split(",")]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_allowed_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
