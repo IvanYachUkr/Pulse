@@ -3,9 +3,13 @@ Pulse Dashboard — Backend Connection
 
 Data-access layer that translates dashboard requests into SQL queries
 against the stream-stats and ML-anomaly databases.
+
+Thread-safe by design: DB readers are shared (immutable after init),
+time windows are computed per-request via ``compute_time_window()``.
 """
 
 import logging
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 import pandas as pd
@@ -17,9 +21,66 @@ logger = logging.getLogger(__name__)
 # Problem types in severity order (matches dashboard colour coding)
 PROBLEM_TYPES = ("cpu_bound", "io_bound", "queue_wlm_bound", "network_bound")
 
+WINDOW_MAP = {"24h": "24 h", "1week": "1 week"}
+
+
+# ── Per-request time window (no mutable state) ──────────────
+
+@dataclass(frozen=True)
+class TimeWindow:
+    """Immutable time window boundaries for a single request."""
+    window_start: datetime
+    prev_window_start: datetime
+
+
+def compute_time_window(db_stream, window_type: str) -> TimeWindow:
+    """Compute time window boundaries from the latest data timestamp.
+
+    This is a pure function — no mutation, safe to call concurrently.
+    """
+    sql = f"""
+        SELECT window_start
+        FROM {db_stream.tablename}
+        ORDER BY window_start DESC
+        LIMIT 1
+    """
+
+    try:
+        result = db_stream.query(sql)
+        if result.empty:
+            window_end = datetime.now()
+        else:
+            window_end = result["window_start"].iloc[0]
+            if isinstance(window_end, str):
+                window_end = pd.to_datetime(window_end)
+    except Exception:
+        logger.exception("Failed to fetch latest window_start")
+        window_end = datetime.now()
+
+    label = WINDOW_MAP.get(window_type, window_type)
+    match label:
+        case "24 h":
+            return TimeWindow(
+                window_start=window_end - timedelta(hours=24),
+                prev_window_start=window_end - timedelta(hours=48),
+            )
+        case "1 week":
+            return TimeWindow(
+                window_start=window_end - timedelta(days=7),
+                prev_window_start=window_end - timedelta(days=14),
+            )
+        case _:
+            raise NotImplementedError(
+                f"Window type '{window_type}' is unknown!"
+            )
+
 
 class DashboardBackend:
-    """Serve dashboard-facing query helpers for stream and ML datasets."""
+    """Serve dashboard-facing query helpers for stream and ML datasets.
+
+    Thread-safe: holds only immutable DB readers. All time-sensitive methods
+    accept a ``TimeWindow`` computed per-request by the caller.
+    """
 
     def __init__(self):
         # Stream aggregation — auto-detects SQLite or Lakehouse
@@ -27,10 +88,6 @@ class DashboardBackend:
 
         # Machine learning — 'ml' lakehouse, 'anomalies' table
         self.db_ml = DBReader("anomalies", "ml")
-
-        # Time windows (set by update_time_windows)
-        self.prev_window_start: datetime | None = None
-        self.window_start: datetime | None = None
 
     # ── Helpers ──────────────────────────────────────────────
 
@@ -43,56 +100,22 @@ class DashboardBackend:
         ids = [int(i) for i in instance_ids]
         return ", ".join("?" for _ in ids), ids
 
-    # ── Time windows ─────────────────────────────────────────
-
-    def update_time_windows(self, window_type: str) -> None:
-        sql = f"""
-            SELECT window_start
-            FROM {self.db_stream.tablename}
-            ORDER BY window_start DESC
-            LIMIT 1
-        """
-
-        try:
-            result = self.db_stream.query(sql)
-            if result.empty:
-                window_end = datetime.now()
-            else:
-                window_end = result["window_start"].iloc[0]
-                if isinstance(window_end, str):
-                    window_end = pd.to_datetime(window_end)
-        except Exception:
-            logger.exception("Failed to fetch latest window_start")
-            window_end = datetime.now()
-
-        match window_type:
-            case "24 h":
-                self.window_start = window_end - timedelta(hours=24)
-                self.prev_window_start = window_end - timedelta(hours=48)
-            case "1 week":
-                self.window_start = window_end - timedelta(days=7)
-                self.prev_window_start = window_end - timedelta(days=14)
-            case _:
-                raise NotImplementedError(
-                    f"Window type '{window_type}' is unknown!"
-                )
-
     # ── Instance queries ─────────────────────────────────────
 
-    def get_instance_ids(self) -> list[int]:
+    def get_instance_ids(self, tw: TimeWindow) -> list[int]:
         sql = f"""
             SELECT DISTINCT instance_id
             FROM {self.db_stream.tablename}
             WHERE window_start >= ?
         """
         try:
-            return self.db_stream.query(sql, [self.window_start])["instance_id"].tolist()
+            return self.db_stream.query(sql, [tw.window_start])["instance_id"].tolist()
         except Exception:
             logger.exception("Failed to fetch instance IDs")
             return []
 
     def get_critical_instance_ids(
-        self, abs_threshold: int = 50, rel_threshold: float = 0.05
+        self, tw: TimeWindow, abs_threshold: int = 50, rel_threshold: float = 0.05
     ) -> list[int]:
         # Build HAVING conditions for each problem type
         conditions = []
@@ -113,7 +136,7 @@ class DashboardBackend:
             ORDER BY instance_id DESC
         """
         try:
-            return self.db_stream.query(sql, [self.window_start])[
+            return self.db_stream.query(sql, [tw.window_start])[
                 "instance_id"
             ].tolist()
         except Exception:
@@ -124,6 +147,7 @@ class DashboardBackend:
 
     def get_critical_problem_types(
         self,
+        tw: TimeWindow,
         instance_ids: list[int],
         abs_threshold: int = 50,
         rel_threshold: float = 0.05,
@@ -145,7 +169,7 @@ class DashboardBackend:
                 AND instance_id IN ({ph})
                 GROUP BY instance_id
             """)
-            params.extend([self.window_start] + id_vals)
+            params.extend([tw.window_start] + id_vals)
 
         sql = f"""
             SELECT DISTINCT problem FROM (
@@ -166,7 +190,7 @@ class DashboardBackend:
 
     # ── Aggregated metrics ───────────────────────────────────
 
-    def get_agg_metrics(self, instance_ids: list[int]) -> dict:
+    def get_agg_metrics(self, tw: TimeWindow, instance_ids: list[int]) -> dict:
         ph, id_vals = self._id_params(instance_ids)
 
         default_stream = {
@@ -201,7 +225,7 @@ class DashboardBackend:
         # ── Current window ───────────────────────────────────
         try:
             result = self.db_stream.query(
-                stream_sql, [self.window_start] + id_vals
+                stream_sql, [tw.window_start] + id_vals
             )
             current = (
                 result.iloc[0].to_dict() if not result.empty else default_stream.copy()
@@ -212,7 +236,7 @@ class DashboardBackend:
 
         try:
             result = self.db_ml.query(
-                ml_sql, [self.window_start] + id_vals
+                ml_sql, [tw.window_start] + id_vals
             )
             current.update(
                 result.iloc[0].to_dict() if not result.empty else default_ml.copy()
@@ -246,7 +270,7 @@ class DashboardBackend:
         try:
             result = self.db_stream.query(
                 prev_stream_sql,
-                [self.prev_window_start, self.window_start] + id_vals,
+                [tw.prev_window_start, tw.window_start] + id_vals,
             )
             previous = (
                 result.iloc[0].to_dict() if not result.empty else default_stream.copy()
@@ -258,7 +282,7 @@ class DashboardBackend:
         try:
             result = self.db_ml.query(
                 prev_ml_sql,
-                [self.prev_window_start, self.window_start] + id_vals,
+                [tw.prev_window_start, tw.window_start] + id_vals,
             )
             previous.update(
                 result.iloc[0].to_dict() if not result.empty else default_ml.copy()
@@ -280,7 +304,7 @@ class DashboardBackend:
 
     # ── Anomaly queries ──────────────────────────────────────
 
-    def get_anomaly_queries(self, instance_ids: list[int]) -> pd.DataFrame:
+    def get_anomaly_queries(self, tw: TimeWindow, instance_ids: list[int]) -> pd.DataFrame:
         ph, id_vals = self._id_params(instance_ids)
 
         sql = f"""
@@ -297,12 +321,12 @@ class DashboardBackend:
             WHERE arrival_timestamp >= ?
             AND instance_id IN ({ph})
         """
-        return self.db_ml.query(sql, [self.window_start] + id_vals)
+        return self.db_ml.query(sql, [tw.window_start] + id_vals)
 
     # ── Classification chart / table ─────────────────────────
 
     def get_query_classification_chart(
-        self, instance_ids: list[int]
+        self, tw: TimeWindow, instance_ids: list[int]
     ) -> pd.DataFrame:
         ph, id_vals = self._id_params(instance_ids)
 
@@ -321,13 +345,13 @@ class DashboardBackend:
             ORDER BY window_start
         """
         try:
-            return self.db_stream.query(sql, [self.window_start] + id_vals)
+            return self.db_stream.query(sql, [tw.window_start] + id_vals)
         except Exception:
             logger.exception("Failed to fetch classification chart data")
             return pd.DataFrame()
 
     def get_query_classification_table(
-        self, instance_ids: list[int]
+        self, tw: TimeWindow, instance_ids: list[int]
     ) -> pd.DataFrame:
         ph, id_vals = self._id_params(instance_ids)
 
@@ -349,7 +373,7 @@ class DashboardBackend:
                 WHERE window_start >= ?
                 AND instance_id IN ({ph})
             """
-            stream_df = self.db_stream.query(sql, [self.window_start] + id_vals)
+            stream_df = self.db_stream.query(sql, [tw.window_start] + id_vals)
         except Exception:
             logger.exception("Failed to fetch classification table (stream)")
             stream_df = pd.DataFrame({
@@ -368,7 +392,7 @@ class DashboardBackend:
                 WHERE arrival_timestamp >= ?
                 AND instance_id IN ({ph})
             """
-            ml_df = self.db_ml.query(ml_sql, [self.window_start] + id_vals)
+            ml_df = self.db_ml.query(ml_sql, [tw.window_start] + id_vals)
         except Exception:
             logger.exception("Failed to fetch classification table (ML)")
             ml_df = pd.DataFrame({"anomalies_count": [0]})

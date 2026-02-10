@@ -1,6 +1,10 @@
 """
 Pulse Dashboard — FastAPI Backend
 Wraps existing DashboardBackend for JSON API access.
+
+Thread-safe: the backend is initialized once (immutable DB readers),
+time windows are computed per-request via ``compute_time_window()``.
+No global lock needed.
 """
 import sys
 from pathlib import Path
@@ -11,14 +15,14 @@ sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(PROJECT_ROOT / "dashboard"))
 
 import math
-import threading
+import re
 import traceback
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from backend_connection import DashboardBackend
+from backend_connection import DashboardBackend, compute_time_window
 
 app = FastAPI(title="Pulse API")
 
@@ -29,18 +33,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Shared state (thread-safe) ───────────────────────────────
+# ── Shared state (thread-safe — no mutable state) ────────────
 backend: DashboardBackend | None = None
-_data_lock = threading.Lock()    # protects DashboardBackend queries
 
 
-def get_backend(window: str = "24h") -> DashboardBackend:
-    """Must be called while holding _data_lock."""
+def get_backend() -> DashboardBackend:
+    """Lazy-init the backend (creates DB readers once)."""
     global backend
     if backend is None:
         backend = DashboardBackend()
-    window_map = {"24h": "24 h", "1week": "1 week"}
-    backend.update_time_windows(window_map.get(window, "24 h"))
     return backend
 
 
@@ -72,20 +73,19 @@ def status():
         "cloud_database": "running",      # local DB status (key matches frontend)
     }
     try:
-        with _data_lock:
-            b = get_backend()
-            # Probe stream DB
-            try:
-                b.db_stream.query(f"SELECT 1 FROM {b.db_stream.tablename} LIMIT 1")
-                result["stream_analytics"] = "running"
-            except Exception:
-                result["stream_analytics"] = "error"
-            # Probe ML DB
-            try:
-                b.db_ml.query(f"SELECT 1 FROM {b.db_ml.tablename} LIMIT 1")
-                result["anomaly_detection"] = "running"
-            except Exception:
-                result["anomaly_detection"] = "error"
+        b = get_backend()
+        # Probe stream DB
+        try:
+            b.db_stream.query(f"SELECT 1 FROM {b.db_stream.tablename} LIMIT 1")
+            result["stream_analytics"] = "running"
+        except Exception:
+            result["stream_analytics"] = "error"
+        # Probe ML DB
+        try:
+            b.db_ml.query(f"SELECT 1 FROM {b.db_ml.tablename} LIMIT 1")
+            result["anomaly_detection"] = "running"
+        except Exception:
+            result["anomaly_detection"] = "error"
     except Exception:
         traceback.print_exc()
     return result
@@ -95,9 +95,9 @@ def status():
 def instances(window: str = "24h"):
     """Return all known instance IDs for the active time window."""
     try:
-        with _data_lock:
-            b = get_backend(window)
-            return sorted(int(x) for x in b.get_instance_ids())
+        b = get_backend()
+        tw = compute_time_window(b.db_stream, window)
+        return sorted(int(x) for x in b.get_instance_ids(tw))
     except Exception as e:
         traceback.print_exc()
         return []
@@ -107,9 +107,9 @@ def instances(window: str = "24h"):
 def critical_instances(window: str = "24h"):
     """Return instance IDs that exceed critical-problem thresholds."""
     try:
-        with _data_lock:
-            b = get_backend(window)
-            return sorted(int(x) for x in b.get_critical_instance_ids())
+        b = get_backend()
+        tw = compute_time_window(b.db_stream, window)
+        return sorted(int(x) for x in b.get_critical_instance_ids(tw))
     except Exception as e:
         traceback.print_exc()
         return []
@@ -119,10 +119,10 @@ def critical_instances(window: str = "24h"):
 def metrics(ids: str = Query(...), window: str = "24h"):
     """Return aggregate metrics for one or more instance IDs."""
     try:
-        with _data_lock:
-            b = get_backend(window)
-            result = b.get_agg_metrics(_parse_ids(ids))
-            return _sanitise(result)
+        b = get_backend()
+        tw = compute_time_window(b.db_stream, window)
+        result = b.get_agg_metrics(tw, _parse_ids(ids))
+        return _sanitise(result)
     except Exception as e:
         traceback.print_exc()
         return {}
@@ -132,19 +132,19 @@ def metrics(ids: str = Query(...), window: str = "24h"):
 def classification_chart(ids: str = Query(...), window: str = "24h"):
     """Return time-series query classification percentages."""
     try:
-        with _data_lock:
-            b = get_backend(window)
-            df = b.get_query_classification_chart(_parse_ids(ids))
-            if df.empty:
-                return []
-            data = df.to_dict(orient="records")
-            for row in data:
-                ws = row.get("window_start")
-                if hasattr(ws, "isoformat"):
-                    row["window_start"] = ws.isoformat()
-                else:
-                    row["window_start"] = str(ws)
-            return _sanitise(data)
+        b = get_backend()
+        tw = compute_time_window(b.db_stream, window)
+        df = b.get_query_classification_chart(tw, _parse_ids(ids))
+        if df.empty:
+            return []
+        data = df.to_dict(orient="records")
+        for row in data:
+            ws = row.get("window_start")
+            if hasattr(ws, "isoformat"):
+                row["window_start"] = ws.isoformat()
+            else:
+                row["window_start"] = str(ws)
+        return _sanitise(data)
     except Exception as e:
         traceback.print_exc()
         return []
@@ -154,13 +154,13 @@ def classification_chart(ids: str = Query(...), window: str = "24h"):
 def classification_table(ids: str = Query(...), window: str = "24h"):
     """Return a single-row classification summary table."""
     try:
-        with _data_lock:
-            b = get_backend(window)
-            df = b.get_query_classification_table(_parse_ids(ids))
-            if df.empty:
-                return {}
-            row = df.iloc[0].to_dict()
-            return _sanitise(row)
+        b = get_backend()
+        tw = compute_time_window(b.db_stream, window)
+        df = b.get_query_classification_table(tw, _parse_ids(ids))
+        if df.empty:
+            return {}
+        row = df.iloc[0].to_dict()
+        return _sanitise(row)
     except Exception as e:
         traceback.print_exc()
         return {}
@@ -170,15 +170,15 @@ def classification_table(ids: str = Query(...), window: str = "24h"):
 def anomalies(ids: str = Query(...), window: str = "24h"):
     """Return anomaly records for the selected instances."""
     try:
-        with _data_lock:
-            b = get_backend(window)
-            df = b.get_anomaly_queries(_parse_ids(ids))
-            data = df.to_dict(orient="records")
-            for row in data:
-                for k, v in row.items():
-                    if hasattr(v, "isoformat"):
-                        row[k] = v.isoformat()
-            return _sanitise(data)
+        b = get_backend()
+        tw = compute_time_window(b.db_stream, window)
+        df = b.get_anomaly_queries(tw, _parse_ids(ids))
+        data = df.to_dict(orient="records")
+        for row in data:
+            for k, v in row.items():
+                if hasattr(v, "isoformat"):
+                    row[k] = v.isoformat()
+        return _sanitise(data)
     except Exception as e:
         traceback.print_exc()
         return []
@@ -188,9 +188,9 @@ def anomalies(ids: str = Query(...), window: str = "24h"):
 def critical_types(ids: str = Query(...), window: str = "24h"):
     """Return active critical problem categories in severity order."""
     try:
-        with _data_lock:
-            b = get_backend(window)
-            return b.get_critical_problem_types(_parse_ids(ids))
+        b = get_backend()
+        tw = compute_time_window(b.db_stream, window)
+        return b.get_critical_problem_types(tw, _parse_ids(ids))
     except Exception as e:
         traceback.print_exc()
         return []
@@ -212,7 +212,6 @@ def recommendation(rec_type: str):
     if path is None or not path.exists():
         return {"text": "Unknown recommendation type."}
     raw = path.read_text(encoding="utf-8")
-    import re
     raw = re.sub(r":(\w+)\[([^\]]+)\]", r"**\2**", raw)
     return {"text": raw}
 
