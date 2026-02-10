@@ -9,6 +9,7 @@ DuckDB sqlite_scanner) behind a common abstract interface.  A factory function
 import logging
 import re
 import sys
+import threading
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, List, Optional
@@ -47,13 +48,15 @@ class ParquetReader(BaseReader):
     def __init__(self, tablename: str, lakehouse_name: str = "default"):
         self.conn = connect_lakehouse(lakehouse_name)
         self.tablename = tablename
+        self._lock = threading.Lock()
 
     def query(
         self, sql: str, params: Optional[List[Any]] = None
     ) -> pd.DataFrame:
         if params is None:
             params = []
-        return self.conn.execute(sql, params).df()
+        with self._lock:
+            return self.conn.execute(sql, params).df()
 
 
 # ── SQLite reader (DuckDB sqlite_scanner) ────────────────────
@@ -68,6 +71,7 @@ class SQLiteReader(BaseReader):
 
         self.conn = duckdb.connect(":memory:")
         self.conn.execute("INSTALL sqlite; LOAD sqlite;")
+        self._lock = threading.Lock()
 
     # -- internal helpers --------------------------------------------------
 
@@ -95,7 +99,8 @@ class SQLiteReader(BaseReader):
         qualified_sql = re.sub(
             rf"\b{re.escape(self.tablename)}\b", self._table_ref(), sql
         )
-        return self.conn.execute(qualified_sql, converted).df()
+        with self._lock:
+            return self.conn.execute(qualified_sql, converted).df()
 
 
 # ── Factory ──────────────────────────────────────────────────
