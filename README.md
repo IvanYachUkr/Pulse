@@ -15,6 +15,12 @@ Paste this as README.md
 </p>
 
 <p align="center">
+  <a href="https://github.com/IvanYachUkr/Pulse/actions/workflows/docker-publish.yml">
+    <img src="https://github.com/IvanYachUkr/Pulse/actions/workflows/docker-publish.yml/badge.svg" alt="Build & Test">
+  </a>
+</p>
+
+<p align="center">
   <em>Don't let unoptimized queries and black-box algorithms swallow your cloud database budget like a black hole.<br/>
   Pulse brings real-time ML outlier detection to the edge of your data warehouse — so you can see what's really going on before it's too late.</em>
 </p>
@@ -239,6 +245,9 @@ Pulse/
 │   ├── checkpoints/                # QuixStreams RocksDB state
 │   └── store_ml/                   # ML anomalies lakehouse
 │
+├── .github/workflows/              # CI/CD
+│   └── docker-publish.yml          # Tests + Docker build/publish to GHCR
+│
 ├── docs/                           # Documentation
 │   ├── DOCKER.md                   # Docker usage guide
 │   ├── MANUAL_SETUP.md             # Manual (non-Docker) setup
@@ -275,6 +284,12 @@ Pulse/
 │   ├── backend_connection.py       # Database connections
 │   ├── db_reader.py                # Data queries
 │   └── recommendations/            # Remediation advice (markdown)
+│
+├── tests/                          # Pytest test suite
+│   ├── conftest.py                 # Path setup for all source dirs
+│   ├── test_pipeline.py            # Config, Arrow writer, DB reader tests
+│   ├── test_dashboard.py           # API, TimeWindow, sanitization tests
+│   └── test_outlier_tool.py        # Feature, model, anomaly, I/O tests
 │
 └── assets/                         # Images and logos
 ```
