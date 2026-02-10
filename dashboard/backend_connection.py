@@ -117,6 +117,10 @@ class DashboardBackend:
     def get_critical_instance_ids(
         self, tw: TimeWindow, abs_threshold: int = 50, rel_threshold: float = 0.05
     ) -> list[int]:
+        # Coerce to numeric to prevent SQL injection
+        abs_threshold = int(abs_threshold)
+        rel_threshold = float(rel_threshold)
+
         # Build HAVING conditions for each problem type
         conditions = []
         for p in PROBLEM_TYPES:
@@ -152,6 +156,10 @@ class DashboardBackend:
         abs_threshold: int = 50,
         rel_threshold: float = 0.05,
     ) -> list[str]:
+        # Coerce to numeric to prevent SQL injection
+        abs_threshold = int(abs_threshold)
+        rel_threshold = float(rel_threshold)
+
         ph, id_vals = self._id_params(instance_ids)
 
         # One sub-SELECT per problem type, UNION-ed together
