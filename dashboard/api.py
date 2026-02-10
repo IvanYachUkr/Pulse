@@ -40,6 +40,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ── Liveness probe (no DB calls) ──────────────────────────────
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
 # ── Shared state (thread-safe — no mutable state) ────────────
 backend: DashboardBackend | None = None
 
