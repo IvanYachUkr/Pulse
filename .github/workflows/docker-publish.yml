@@ -18,7 +18,32 @@ env:
   IMAGE_NAME: ivanyachukr/pulse-pipeline
 
 jobs:
+  # ---------------------------------------------------------------------------
+  # Run tests before building
+  # ---------------------------------------------------------------------------
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt pytest
+
+      - name: Run tests
+        run: pytest tests/ -v --tb=short
+
+  # ---------------------------------------------------------------------------
+  # Build & publish Docker image (only if tests pass)
+  # ---------------------------------------------------------------------------
   build-and-push:
+    needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: read
